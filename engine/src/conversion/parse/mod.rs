@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod bindgen_annotations;
 mod parse_bindgen;
 mod parse_foreign_mod;
 

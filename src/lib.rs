@@ -685,6 +685,9 @@ macro_rules! usage {
 #[doc(hidden)]
 pub use autocxx_macro::include_cpp_impl;
 
+#[doc(hidden)]
+pub use autocxx_macro::bindgen_annotation;
+
 macro_rules! ctype_wrapper {
     ($r:ident, $c:expr, $d:expr) => {
         #[doc=$d]
