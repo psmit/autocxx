@@ -21,7 +21,11 @@ use syn::{
     Attribute, LitStr,
 };
 
-use crate::conversion::api::{CppVisibility, Layout, Virtualness};
+use crate::conversion::{
+    api::{CppVisibility, Layout, Virtualness},
+    convert_error::{ConvertErrorWithContext, ErrorContext},
+    ConvertError,
+};
 
 /// The set of all annotations that autocxx_bindgen has added
 /// for our benefit.
@@ -122,6 +126,25 @@ impl AutocxxBindgenAnnotations {
             }
         }
         (ref_params, ref_return)
+    }
+
+    // Remove `bindgen_` attributes. They don't have a corresponding macro defined anywhere,
+    // so they will cause compilation errors if we leave them in.
+    // We may return an error if one of the bindgen attributes shows that the
+    // item can't be processed.
+    pub(crate) fn remove_bindgen_attrs(
+        attrs: &mut Vec<Attribute>,
+        id: Ident,
+    ) -> Result<(), ConvertErrorWithContext> {
+        let annotations = Self::new(&attrs);
+        if annotations.has_attr("unused_template_param") {
+            return Err(ConvertErrorWithContext(
+                ConvertError::UnusedTemplateParam,
+                Some(ErrorContext::Item(id)),
+            ));
+        }
+        attrs.retain(|a| !(a.path.segments.last().unwrap().ident == "bindgen_annotation"));
+        Ok(())
     }
 }
 

@@ -23,12 +23,11 @@ use crate::{
         api::{AnalysisPhase, Api, ApiName, TypedefKind, UnanalyzedApi},
         convert_error::{ConvertErrorWithContext, ErrorContext},
         error_reporter::convert_apis,
+        parse::AutocxxBindgenAnnotations,
         ConvertError,
     },
     types::QualifiedName,
 };
-
-use super::remove_bindgen_attrs;
 
 pub(crate) struct TypedefAnalysis {
     pub(crate) kind: TypedefKind,
@@ -93,7 +92,7 @@ fn get_replacement_typedef(
 ) -> Result<Api<TypedefPhase>, ConvertErrorWithContext> {
     let mut converted_type = ity.clone();
     let id = ity.ident.clone();
-    remove_bindgen_attrs(&mut converted_type.attrs, id)?;
+    AutocxxBindgenAnnotations::remove_bindgen_attrs(&mut converted_type.attrs, id)?;
     let type_conversion_results = type_converter.convert_type(
         (*ity.ty).clone(),
         name.name.get_namespace(),

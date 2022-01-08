@@ -16,4 +16,5 @@ mod bindgen_annotations;
 mod parse_bindgen;
 mod parse_foreign_mod;
 
+pub(crate) use bindgen_annotations::AutocxxBindgenAnnotations;
 pub(crate) use parse_bindgen::ParseBindgen;
