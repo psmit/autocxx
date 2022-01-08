@@ -509,6 +509,7 @@ impl<'a> TypeConverter<'a> {
                 | Api::CType { .. }
                 | Api::RustSubclassFn { .. }
                 | Api::IgnoredItem { .. }
+                | Api::DeletedMoveConstructor { .. }
                 | Api::RustFn { .. } => None,
             })
             .cloned()

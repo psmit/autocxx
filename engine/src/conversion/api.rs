@@ -391,6 +391,9 @@ pub(crate) enum Api<T: AnalysisPhase> {
         name: SubclassName,
         superclass: QualifiedName,
     },
+    /// A C++ function which is marked =delete
+    /// For now we only worry about move constructors here.
+    DeletedMoveConstructor { name: ApiName },
 }
 
 pub(crate) struct RustSubclassFnDetails {
@@ -422,6 +425,7 @@ impl<T: AnalysisPhase> Api<T> {
             Api::RustFn { name, .. } => name,
             Api::RustSubclassFn { name, .. } => name,
             Api::Subclass { name, .. } => &name.0,
+            Api::DeletedMoveConstructor { name } => name,
         }
     }
 

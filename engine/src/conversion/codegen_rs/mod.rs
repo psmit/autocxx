@@ -521,6 +521,7 @@ impl<'a> RsCodeGenerator<'a> {
                     &name,
                     id,
                     analysis.kind,
+                    analysis.movable,
                     || Some((Item::Struct(details.item), doc_attr)),
                     associated_methods,
                     layout,
@@ -532,6 +533,7 @@ impl<'a> RsCodeGenerator<'a> {
                     &name,
                     id,
                     TypeKind::Pod,
+                    true,
                     || Some((Item::Enum(item), doc_attr)),
                     associated_methods,
                     None,
@@ -541,6 +543,7 @@ impl<'a> RsCodeGenerator<'a> {
                 &name,
                 id,
                 TypeKind::Abstract,
+                false, // assume for now that these types can't be kept in a Vector
                 || None,
                 associated_methods,
                 None,
@@ -594,6 +597,7 @@ impl<'a> RsCodeGenerator<'a> {
                 self.generate_subclass(name, &superclass, methods, generate_peer_constructor)
             }
             Api::IgnoredItem { err, ctx, .. } => Self::generate_error_entry(err, ctx),
+            Api::DeletedMoveConstructor { .. } => RsCodegenResult::default(),
         }
     }
 
@@ -719,7 +723,9 @@ impl<'a> RsCodeGenerator<'a> {
         });
         RsCodegenResult {
             extern_c_mod_items,
-            bridge_items: create_impl_items(&cpp_id, self.config),
+            // For now we just assume we can't keep subclasses in vectors.
+            // That's the reason for the 'false'
+            bridge_items: create_impl_items(&cpp_id, false, self.config),
             bindgen_mod_items,
             materializations: vec![Use::Custom(Box::new(parse_quote! {
                 pub use cxxbridge::#cpp_id;
@@ -810,6 +816,7 @@ impl<'a> RsCodeGenerator<'a> {
         name: &QualifiedName,
         id: Ident,
         type_kind: TypeKind,
+        movable: bool,
         item_creator: F,
         associated_methods: &HashMap<QualifiedName, Vec<SuperclassMethod>>,
         layout: Option<Layout>,
@@ -857,7 +864,7 @@ impl<'a> RsCodeGenerator<'a> {
                 RsCodegenResult {
                     global_items: self.generate_extern_type_impl(type_kind, name),
                     impl_entry: None,
-                    bridge_items: create_impl_items(&id, self.config),
+                    bridge_items: create_impl_items(&id, movable, self.config),
                     extern_c_mod_items: vec![self.generate_cxxbridge_type(name, true, None)],
                     bindgen_mod_items,
                     materializations,

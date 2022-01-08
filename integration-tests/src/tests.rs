@@ -4897,7 +4897,6 @@ fn test_issue_490() {
 }
 
 #[test]
-#[ignore] // https://github.com/google/autocxx/issues/489
 fn test_immovable_object() {
     let hdr = indoc! {"
         class A {

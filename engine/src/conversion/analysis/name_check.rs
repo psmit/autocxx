@@ -76,6 +76,7 @@ pub(crate) fn check_names(apis: Vec<Api<FnPhase>>) -> Vec<Api<FnPhase>> {
         | Api::RustSubclassFn { .. }
         | Api::RustFn { .. }
         | Api::IgnoredItem { .. } => Ok(Box::new(std::iter::once(api))),
+        Api::DeletedMoveConstructor { .. } => Ok(Box::new(std::iter::empty())),
     });
 
     // Reject any names which are duplicates within the cxx bridge mod,

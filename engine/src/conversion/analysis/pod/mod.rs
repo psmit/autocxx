@@ -42,6 +42,7 @@ pub(crate) struct PodAnalysis {
     /// abstract or not.
     pub(crate) castable_bases: HashSet<QualifiedName>,
     pub(crate) field_deps: HashSet<QualifiedName>,
+    pub(crate) movable: bool,
 }
 
 pub(crate) struct PodPhase;
@@ -58,7 +59,7 @@ impl AnalysisPhase for PodPhase {
 /// and an object which can be used to query the POD status of any
 /// type whether or not it's one of the [Api]s.
 pub(crate) fn analyze_pod_apis(
-    apis: Vec<Api<TypedefPhase>>,
+    mut apis: Vec<Api<TypedefPhase>>,
     config: &IncludeCppConfig,
 ) -> Result<Vec<Api<PodPhase>>, ConvertError> {
     // This next line will return an error if any of the 'generate_pod'
@@ -66,6 +67,8 @@ pub(crate) fn analyze_pod_apis(
     // a type contains a std::string or some other type which can't be
     // held safely by value in Rust.
     let byvalue_checker = ByValueChecker::new_from_apis(&apis, config)?;
+    // We'll also note which types have deleted move constructors.
+    let deleted_move_constructors = find_deleted_move_constructors(&mut apis);
     let mut extra_apis = Vec::new();
     let mut type_converter = TypeConverter::new(config, &apis);
     let mut results = Vec::new();
@@ -81,6 +84,7 @@ pub(crate) fn analyze_pod_apis(
                 name,
                 details,
                 config,
+                &deleted_move_constructors,
             )
         },
         analyze_enum,
@@ -102,6 +106,7 @@ pub(crate) fn analyze_pod_apis(
                 name,
                 details,
                 config,
+                &deleted_move_constructors,
             )
         },
         analyze_enum,
@@ -126,7 +131,9 @@ fn analyze_struct(
     name: ApiName,
     mut details: Box<StructDetails>,
     config: &IncludeCppConfig,
+    deleted_move_constructors: &HashSet<QualifiedName>,
 ) -> Result<Box<dyn Iterator<Item = Api<PodPhase>>>, ConvertErrorWithContext> {
+    let movable = !deleted_move_constructors.contains(&name.name);
     let id = name.name.get_final_ident();
     if details.vis != CppVisibility::Public {
         return Err(ConvertErrorWithContext(
@@ -166,6 +173,7 @@ fn analyze_struct(
             bases: bases.into_keys().collect(),
             castable_bases,
             field_deps,
+            movable,
         },
     })))
 }
@@ -202,4 +210,17 @@ fn get_bases(item: &ItemStruct) -> HashMap<QualifiedName, bool> {
             }
         })
         .collect()
+}
+
+fn find_deleted_move_constructors(apis: &mut Vec<Api<TypedefPhase>>) -> HashSet<QualifiedName> {
+    // The nightly API Vec::drain_filter would be nice here
+    let results = apis
+        .iter()
+        .filter_map(|api| match api {
+            Api::DeletedMoveConstructor { name } => Some(name.name.clone()),
+            _ => None,
+        })
+        .collect();
+    apis.retain(|api| !matches!(api, Api::DeletedMoveConstructor { .. }));
+    results
 }

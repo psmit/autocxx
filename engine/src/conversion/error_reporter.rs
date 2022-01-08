@@ -112,6 +112,11 @@ pub(crate) fn convert_apis<FF, SF, EF, TF, A, B: 'static>(
             Api::RustFn { name, sig, path } => {
                 Ok(Box::new(std::iter::once(Api::RustFn { name, sig, path })))
             }
+            Api::DeletedMoveConstructor { name } => {
+                Ok(Box::new(std::iter::once(Api::DeletedMoveConstructor {
+                    name,
+                })))
+            }
             Api::RustSubclassFn {
                 name,
                 subclass,

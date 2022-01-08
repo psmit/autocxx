@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::conversion::api::{ApiName, References};
+use crate::conversion::api::{Api, ApiName, References};
 use crate::conversion::doc_attr::get_doc_attr;
 use crate::conversion::error_reporter::report_any_error;
 use crate::conversion::{
@@ -20,6 +20,7 @@ use crate::conversion::{
     convert_error::ConvertErrorWithContext,
     convert_error::ErrorContext,
 };
+use crate::types::make_ident;
 use crate::{
     conversion::ConvertError,
     types::{Namespace, QualifiedName},
@@ -50,6 +51,7 @@ pub(crate) struct ParseForeignMod {
     // function name to type name.
     method_receivers: HashMap<Ident, QualifiedName>,
     ignored_apis: Vec<UnanalyzedApi>,
+    deleted_move_constructors: Vec<Ident>,
 }
 
 impl ParseForeignMod {
@@ -59,6 +61,7 @@ impl ParseForeignMod {
             funcs_to_convert: Vec::new(),
             method_receivers: HashMap::new(),
             ignored_apis: Vec::new(),
+            deleted_move_constructors: Vec::new(),
         }
     }
 
@@ -83,9 +86,18 @@ impl ParseForeignMod {
                     &item.attrs,
                     "bindgen_unused_template_param_in_arg_or_return",
                 );
-                let is_move_constructor = Self::is_move_constructor(&item);
-                let references = Self::get_reference_parameters_and_return(&item);
                 let original_name = get_bindgen_original_name_annotation(&item.attrs);
+                let is_move_constructor = Self::is_move_constructor(&item);
+                let is_deleted = has_attr(&item.attrs, "bindgen_deleted");
+                if is_deleted {
+                    if is_move_constructor {
+                        self.deleted_move_constructors
+                            .push(original_name.map(make_ident).unwrap_or(item.sig.ident));
+                    }
+                    // Do not generate actual functions for deleted functions.
+                    return Ok(());
+                }
+                let references = Self::get_reference_parameters_and_return(&item);
                 let doc_attr = get_doc_attr(&item.attrs);
                 self.funcs_to_convert.push(FuncToConvert {
                     self_ty: None,
@@ -203,6 +215,11 @@ impl ParseForeignMod {
                 name_for_gc: None,
             })
         }
+        apis.extend(self.deleted_move_constructors.into_iter().map(
+            |id| Api::DeletedMoveConstructor {
+                name: ApiName::new(&self.ns, id),
+            }, // TODO consider whether we need to respect original name annotations
+        ))
     }
 }
 
