@@ -30,26 +30,48 @@ use crate::conversion::{
 /// The set of all annotations that autocxx_bindgen has added
 /// for our benefit.
 #[derive(Debug)]
-pub(crate) struct AutocxxBindgenAnnotations(Vec<AutocxxBindgenAttribute>);
+pub(crate) struct BindgenSemanticAttributes(Vec<BindgenSemanticAttribute>);
 
-impl AutocxxBindgenAnnotations {
-    /// Interprets any `autocxx::bindgen_annotation` within this item's
-    /// attributes.
+impl BindgenSemanticAttributes {
+    // Remove `bindgen_` attributes. They don't have a corresponding macro defined anywhere,
+    // so they will cause compilation errors if we leave them in.
+    // We may return an error if one of the bindgen attributes shows that the
+    // item can't be processed.
+    pub(crate) fn new_retaining_others(attrs: &mut Vec<Attribute>) -> Self {
+        let metadata = Self::new(attrs);
+        attrs.retain(|a| !(a.path.segments.last().unwrap().ident == "cpp_semantics"));
+        metadata
+    }
+
     pub(crate) fn new(attrs: &[Attribute]) -> Self {
-        let s = Self(
+        Self(
             attrs
                 .iter()
                 .filter_map(|attr| {
-                    if attr.path.segments.last().unwrap().ident == "bindgen_annotation" {
-                        let r: Result<AutocxxBindgenAttribute, syn::Error> = attr.parse_args();
+                    if attr.path.segments.last().unwrap().ident == "cpp_semantics" {
+                        let r: Result<BindgenSemanticAttribute, syn::Error> = attr.parse_args();
                         r.ok()
                     } else {
                         None
                     }
                 })
                 .collect(),
-        );
-        s
+        )
+    }
+
+    /// Some attributes indicate we can never handle a given item. Check for those.
+    pub(crate) fn check_for_fatal_attrs(
+        &self,
+        id_for_context: &Ident,
+    ) -> Result<(), ConvertErrorWithContext> {
+        if self.has_attr("unused_template_param") {
+            Err(ConvertErrorWithContext(
+                ConvertError::UnusedTemplateParam,
+                Some(ErrorContext::Item(id_for_context.clone())),
+            ))
+        } else {
+            Ok(())
+        }
     }
 
     /// Whether the given attribute is present.
@@ -127,34 +149,15 @@ impl AutocxxBindgenAnnotations {
         }
         (ref_params, ref_return)
     }
-
-    // Remove `bindgen_` attributes. They don't have a corresponding macro defined anywhere,
-    // so they will cause compilation errors if we leave them in.
-    // We may return an error if one of the bindgen attributes shows that the
-    // item can't be processed.
-    pub(crate) fn remove_bindgen_attrs(
-        attrs: &mut Vec<Attribute>,
-        id: Ident,
-    ) -> Result<(), ConvertErrorWithContext> {
-        let annotations = Self::new(&attrs);
-        if annotations.has_attr("unused_template_param") {
-            return Err(ConvertErrorWithContext(
-                ConvertError::UnusedTemplateParam,
-                Some(ErrorContext::Item(id)),
-            ));
-        }
-        attrs.retain(|a| !(a.path.segments.last().unwrap().ident == "bindgen_annotation"));
-        Ok(())
-    }
 }
 
 #[derive(Debug)]
-struct AutocxxBindgenAttribute {
+struct BindgenSemanticAttribute {
     annotation_name: Ident,
     body: Option<TokenStream>,
 }
 
-impl AutocxxBindgenAttribute {
+impl BindgenSemanticAttribute {
     fn is_ident(&self, name: &str) -> bool {
         self.annotation_name == name
     }
@@ -164,7 +167,7 @@ impl AutocxxBindgenAttribute {
     }
 }
 
-impl Parse for AutocxxBindgenAttribute {
+impl Parse for BindgenSemanticAttribute {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let annotation_name: Ident = input.parse()?;
         if input.peek(syn::token::Paren) {

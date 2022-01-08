@@ -27,7 +27,7 @@ use crate::{
 use std::collections::HashMap;
 use syn::{Block, Expr, ExprCall, ForeignItem, Ident, ImplItem, ItemImpl, Stmt, Type};
 
-use super::bindgen_annotations::AutocxxBindgenAnnotations;
+use super::bindgen_semantic_attributes::BindgenSemanticAttributes;
 
 /// Parses a given bindgen-generated 'mod' into suitable
 /// [Api]s. In bindgen output, a given mod concerns
@@ -72,7 +72,7 @@ impl ParseForeignMod {
     fn parse_foreign_item(&mut self, i: ForeignItem) -> Result<(), ConvertErrorWithContext> {
         match i {
             ForeignItem::Fn(item) => {
-                let annotations = AutocxxBindgenAnnotations::new(&item.attrs);
+                let annotations = BindgenSemanticAttributes::new(&item.attrs);
                 let (reference_args, return_type_is_reference) =
                     annotations.get_reference_parameters_and_return();
                 let doc_attr = get_doc_attr(&item.attrs);

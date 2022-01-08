@@ -125,7 +125,7 @@ pub fn extern_rust_function(attr: TokenStream, input: TokenStream) -> TokenStrea
 /// normally be compiled by rustc before it undergoes further processing.
 #[proc_macro_error]
 #[proc_macro_attribute]
-pub fn bindgen_annotation(_attr: TokenStream, _input: TokenStream) -> TokenStream {
+pub fn cpp_semantics(_attr: TokenStream, _input: TokenStream) -> TokenStream {
     abort!(
         Span::call_site(),
         "Please do not attempt to compile this code. \n\

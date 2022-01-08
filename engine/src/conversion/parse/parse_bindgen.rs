@@ -32,7 +32,9 @@ use crate::{
 use autocxx_parser::IncludeCppConfig;
 use syn::{parse_quote, Fields, Ident, Item, TypePath, UseTree};
 
-use super::{super::utilities::generate_utilities, bindgen_annotations::AutocxxBindgenAnnotations};
+use super::{
+    super::utilities::generate_utilities, bindgen_semantic_attributes::BindgenSemanticAttributes,
+};
 
 use super::parse_foreign_mod::ParseForeignMod;
 
@@ -42,14 +44,14 @@ pub(crate) struct ParseBindgen<'a> {
     apis: Vec<UnanalyzedApi>,
 }
 
-fn api_name(ns: &Namespace, id: Ident, attrs: &AutocxxBindgenAnnotations) -> ApiName {
+fn api_name(ns: &Namespace, id: Ident, attrs: &BindgenSemanticAttributes) -> ApiName {
     ApiName::new_with_cpp_name(ns, id, attrs.get_original_name())
 }
 
 pub(crate) fn api_name_qualified(
     ns: &Namespace,
     id: Ident,
-    attrs: &AutocxxBindgenAnnotations,
+    attrs: &BindgenSemanticAttributes,
 ) -> Result<ApiName, ConvertErrorWithContext> {
     match validate_ident_ok_for_cxx(&id.to_string()) {
         Err(e) => {
@@ -161,7 +163,7 @@ impl<'a> ParseBindgen<'a> {
                     return Ok(());
                 }
                 let is_forward_declaration = Self::spot_forward_declaration(&s.fields);
-                let annotations = AutocxxBindgenAnnotations::new(&s.attrs);
+                let annotations = BindgenSemanticAttributes::new(&s.attrs);
                 // cxx::bridge can't cope with type aliases to generic
                 // types at the moment.
                 let name = api_name_qualified(ns, s.ident.clone(), &annotations)?;
@@ -188,7 +190,7 @@ impl<'a> ParseBindgen<'a> {
                 Ok(())
             }
             Item::Enum(e) => {
-                let annotations = AutocxxBindgenAnnotations::new(&e.attrs);
+                let annotations = BindgenSemanticAttributes::new(&e.attrs);
                 let api = UnanalyzedApi::Enum {
                     name: api_name_qualified(ns, e.ident.clone(), &annotations)?,
                     item: e,
@@ -250,7 +252,7 @@ impl<'a> ParseBindgen<'a> {
                                     Some(ErrorContext::Item(new_id.clone())),
                                 ));
                             }
-                            let annotations = AutocxxBindgenAnnotations::new(&use_item.attrs);
+                            let annotations = BindgenSemanticAttributes::new(&use_item.attrs);
                             self.apis.push(UnanalyzedApi::Typedef {
                                 name: api_name(ns, new_id.clone(), &annotations),
                                 item: TypedefKind::Use(parse_quote! {
@@ -272,7 +274,7 @@ impl<'a> ParseBindgen<'a> {
                 Ok(())
             }
             Item::Const(const_item) => {
-                let annotations = AutocxxBindgenAnnotations::new(&const_item.attrs);
+                let annotations = BindgenSemanticAttributes::new(&const_item.attrs);
                 self.apis.push(UnanalyzedApi::Const {
                     name: api_name(ns, const_item.ident.clone(), &annotations),
                     const_item,
@@ -280,7 +282,7 @@ impl<'a> ParseBindgen<'a> {
                 Ok(())
             }
             Item::Type(ity) => {
-                let annotations = AutocxxBindgenAnnotations::new(&ity.attrs);
+                let annotations = BindgenSemanticAttributes::new(&ity.attrs);
                 self.apis.push(UnanalyzedApi::Typedef {
                     name: api_name(ns, ity.ident.clone(), &annotations),
                     item: TypedefKind::Type(ity),

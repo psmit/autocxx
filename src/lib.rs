@@ -686,7 +686,7 @@ macro_rules! usage {
 pub use autocxx_macro::include_cpp_impl;
 
 #[doc(hidden)]
-pub use autocxx_macro::bindgen_annotation;
+pub use autocxx_macro::cpp_semantics;
 
 macro_rules! ctype_wrapper {
     ($r:ident, $c:expr, $d:expr) => {
@@ -814,6 +814,7 @@ pub mod prelude {
     pub use crate::c_ulonglong;
     pub use crate::c_ushort;
     pub use crate::c_void;
+    pub use crate::cpp_semantics;
     pub use crate::include_cpp;
     pub use crate::PinMut;
     pub use moveit::moveit;

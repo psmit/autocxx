@@ -23,7 +23,7 @@ use crate::{
         api::{AnalysisPhase, Api, ApiName, TypedefKind, UnanalyzedApi},
         convert_error::{ConvertErrorWithContext, ErrorContext},
         error_reporter::convert_apis,
-        parse::AutocxxBindgenAnnotations,
+        parse::BindgenSemanticAttributes,
         ConvertError,
     },
     types::QualifiedName,
@@ -91,8 +91,8 @@ fn get_replacement_typedef(
     extra_apis: &mut Vec<UnanalyzedApi>,
 ) -> Result<Api<TypedefPhase>, ConvertErrorWithContext> {
     let mut converted_type = ity.clone();
-    let id = ity.ident.clone();
-    AutocxxBindgenAnnotations::remove_bindgen_attrs(&mut converted_type.attrs, id)?;
+    let metadata = BindgenSemanticAttributes::new_retaining_others(&mut converted_type.attrs);
+    metadata.check_for_fatal_attrs(&ity.ident)?;
     let type_conversion_results = type_converter.convert_type(
         (*ity.ty).clone(),
         name.name.get_namespace(),
